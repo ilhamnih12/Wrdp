@@ -15,31 +15,29 @@ jobs:
 
       - name: Install AnyDesk Silently
         run: |
-          # Sesuai dokumentasi: --install <location> --silent
           .\AnyDesk.exe --install "C:\Program Files (x86)\AnyDesk" --start-with-win --silent
 
       - name: Set AnyDesk Password
         run: |
-          # Sesuai dokumentasi: echo <password> | anydesk.exe --set-password
-          # Ganti 'PasswordAnda123!' dengan password pilihan Anda
+          # Ganti 'PasswordAnda123!' sesuai keinginan Anda
           cmd /c 'echo PasswordAnda123! | "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --set-password'
 
-      - name: Get AnyDesk ID (With Retry Loop)
+      - name: Get AnyDesk ID (Fixed Parser)
         run: |
           $exePath = "C:\Program Files (x86)\AnyDesk\AnyDesk.exe"
           $anydeskId = ""
-          $maxTries = 12  # Mencoba selama 60 detik (12 x 5 detik)
+          $maxTries = 12 
           $tryCount = 0
 
           Write-Host "Menunggu AnyDesk mendapatkan ID dari server..."
 
           while ([string]::IsNullOrWhiteSpace($anydeskId) -and $tryCount -lt $maxTries) {
               $tryCount++
-              # Menjalankan perintah --get-id sesuai dokumentasi
               $anydeskId = & $exePath --get-id
               
               if ([string]::IsNullOrWhiteSpace($anydeskId)) {
-                  Write-Host "Percobaan $tryCount/$maxTries: ID masih kosong, menunggu 5 detik..."
+                  # Menggunakan ${} untuk menghindari ParserError
+                  Write-Host "Percobaan ${tryCount}/${maxTries}: ID masih kosong, menunggu 5 detik..."
                   Start-Sleep -Seconds 5
               }
           }
@@ -50,7 +48,7 @@ jobs:
               Write-Host "PASSWORD: PasswordAnda123!"
               Write-Host "========================================================="
           } else {
-              Write-Error "Gagal mendapatkan AnyDesk ID setelah $maxTries percobaan."
+              Write-Error "Gagal mendapatkan AnyDesk ID setelah ${maxTries} percobaan."
               exit 1
           }
 
