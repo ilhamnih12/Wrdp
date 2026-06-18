@@ -22,33 +22,42 @@ jobs:
           # Ganti 'PasswordAnda123!' sesuai keinginan Anda
           cmd /c 'echo PasswordAnda123! | "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --set-password'
 
-      - name: Get AnyDesk ID (Fixed Parser)
+      - name: Get AnyDesk ID (Direct File Read Method)
         run: |
-          $exePath = "C:\Program Files (x86)\AnyDesk\AnyDesk.exe"
-          $anydeskId = ""
-          $maxTries = 12 
+          $confPath = "C:\ProgramData\AnyDesk\system.conf"
+          $maxTries = 20
           $tryCount = 0
+          $anydeskId = ""
 
-          Write-Host "Menunggu AnyDesk mendapatkan ID dari server..."
+          Write-Host "Mencari ID AnyDesk di file system.conf..."
 
           while ([string]::IsNullOrWhiteSpace($anydeskId) -and $tryCount -lt $maxTries) {
               $tryCount++
-              $anydeskId = & $exePath --get-id
+              if (Test-Path $confPath) {
+                  $content = Get-Content $confPath
+                  # Mencari baris yang mengandung 'ad.anydesk.id='
+                  $idLine = $content | Select-String "ad.anydesk.id="
+                  if ($idLine) {
+                      # Mengambil angka ID setelah tanda '='
+                      $anydeskId = $idLine.ToString().Split('=')[1].Trim()
+                  }
+              }
               
               if ([string]::IsNullOrWhiteSpace($anydeskId)) {
-                  # Menggunakan ${} untuk menghindari ParserError
-                  Write-Host "Percobaan ${tryCount}/${maxTries}: ID masih kosong, menunggu 5 detik..."
+                  Write-Host "Percobaan ${tryCount}/${maxTries}: ID belum tersedia, menunggu 5 detik..."
                   Start-Sleep -Seconds 5
               }
           }
 
           if (![string]::IsNullOrWhiteSpace($anydeskId)) {
               Write-Host "========================================================="
-              Write-Host "ANYDESK ID: $($anydeskId.Trim())"
+              Write-Host "ANYDESK ID: $anydeskId"
               Write-Host "PASSWORD: PasswordAnda123!"
               Write-Host "========================================================="
           } else {
-              Write-Error "Gagal mendapatkan AnyDesk ID setelah ${maxTries} percobaan."
+              Write-Host "DEBUG: Isi folder ProgramData\AnyDesk:"
+              Get-ChildItem "C:\ProgramData\AnyDesk"
+              Write-Error "Gagal mendapatkan ID bahkan dari file system.conf"
               exit 1
           }
 
