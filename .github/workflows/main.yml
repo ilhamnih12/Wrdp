@@ -1,0 +1,38 @@
+name: Windows AnyDesk RDP
+
+on: 
+  workflow_dispatch: # Memungkinkan Anda menjalankan pipeline secara manual
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360 # Maksimal durasi runner GitHub (6 jam)
+
+    steps:
+      - name: Download AnyDesk
+        run: |
+          Invoke-WebRequest -Uri "https://download.anydesk.com/AnyDesk.exe" -OutFile "AnyDesk.exe"
+
+      - name: Install AnyDesk Silently
+        run: |
+          .\AnyDesk.exe --install "C:\Program Files (x86)\AnyDesk" --start-with-win --silent
+
+      - name: Set AnyDesk Password
+        run: |
+          # Ganti 'PasswordAnda123!' dengan password yang Anda inginkan
+          cmd /c 'echo PasswordAnda123! | "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --set-password'
+
+      - name: Get AnyDesk ID
+        run: |
+          # Memberi jeda agar service AnyDesk berjalan sepenuhnya
+          Start-Sleep -Seconds 30
+          $id = & "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --get-id
+          Write-Host "========================================================="
+          Write-Host "ANYDESK ID: $id"
+          Write-Host "PASSWORD: PasswordAnda123!"
+          Write-Host "========================================================="
+
+      - name: Keep Alive
+        run: |
+          Write-Host "Runner akan tetap aktif selama 6 jam. Silakan connect via AnyDesk sekarang."
+          Start-Sleep -Seconds 21600 # Menjaga VM tetap hidup selama 6 jam
