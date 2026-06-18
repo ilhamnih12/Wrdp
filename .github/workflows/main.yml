@@ -1,12 +1,12 @@
 name: Windows AnyDesk RDP
 
 on: 
-  workflow_dispatch: # Memungkinkan Anda menjalankan pipeline secara manual
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 360 # Maksimal durasi runner GitHub (6 jam)
+    timeout-minutes: 360
 
     steps:
       - name: Download AnyDesk
@@ -15,24 +15,46 @@ jobs:
 
       - name: Install AnyDesk Silently
         run: |
+          # Sesuai dokumentasi: --install <location> --silent
           .\AnyDesk.exe --install "C:\Program Files (x86)\AnyDesk" --start-with-win --silent
 
       - name: Set AnyDesk Password
         run: |
-          # Ganti 'PasswordAnda123!' dengan password yang Anda inginkan
+          # Sesuai dokumentasi: echo <password> | anydesk.exe --set-password
+          # Ganti 'PasswordAnda123!' dengan password pilihan Anda
           cmd /c 'echo PasswordAnda123! | "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --set-password'
 
-      - name: Get AnyDesk ID
+      - name: Get AnyDesk ID (With Retry Loop)
         run: |
-          # Memberi jeda agar service AnyDesk berjalan sepenuhnya
-          Start-Sleep -Seconds 30
-          $id = & "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --get-id
-          Write-Host "========================================================="
-          Write-Host "ANYDESK ID: $id"
-          Write-Host "PASSWORD: PasswordAnda123!"
-          Write-Host "========================================================="
+          $exePath = "C:\Program Files (x86)\AnyDesk\AnyDesk.exe"
+          $anydeskId = ""
+          $maxTries = 12  # Mencoba selama 60 detik (12 x 5 detik)
+          $tryCount = 0
+
+          Write-Host "Menunggu AnyDesk mendapatkan ID dari server..."
+
+          while ([string]::IsNullOrWhiteSpace($anydeskId) -and $tryCount -lt $maxTries) {
+              $tryCount++
+              # Menjalankan perintah --get-id sesuai dokumentasi
+              $anydeskId = & $exePath --get-id
+              
+              if ([string]::IsNullOrWhiteSpace($anydeskId)) {
+                  Write-Host "Percobaan $tryCount/$maxTries: ID masih kosong, menunggu 5 detik..."
+                  Start-Sleep -Seconds 5
+              }
+          }
+
+          if (![string]::IsNullOrWhiteSpace($anydeskId)) {
+              Write-Host "========================================================="
+              Write-Host "ANYDESK ID: $($anydeskId.Trim())"
+              Write-Host "PASSWORD: PasswordAnda123!"
+              Write-Host "========================================================="
+          } else {
+              Write-Error "Gagal mendapatkan AnyDesk ID setelah $maxTries percobaan."
+              exit 1
+          }
 
       - name: Keep Alive
         run: |
-          Write-Host "Runner akan tetap aktif selama 6 jam. Silakan connect via AnyDesk sekarang."
-          Start-Sleep -Seconds 21600 # Menjaga VM tetap hidup selama 6 jam
+          Write-Host "Runner aktif. Silakan connect via AnyDesk sekarang."
+          Start-Sleep -Seconds 21600
